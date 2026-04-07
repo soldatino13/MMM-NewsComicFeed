@@ -1,0 +1,9 @@
+{
+  "name": "mmm-news-comic-feed",
+  "version": "1.0.0",
+  "description": "MagicMirror² RSS news ticker with comic headline broadcasting",
+  "main": "MMM-NewsComicFeed.js",
+  "dependencies": {
+    "rss-parser": "^3.13.0"
+  }
+}
