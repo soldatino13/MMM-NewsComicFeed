@@ -1,6 +1,6 @@
 # MMM-NewsComicFeed
 
-Ein MagicMirror²-Modul, das RSS-Newsfeeds als rotierenden Ticker anzeigt – typischerweise oben und unten am Bildschirm. Jede angezeigte Headline wird per `sendNotification` an andere Module weitergegeben, damit **MMM-ComicButton** immer die aktuell sichtbare Meldung für die Comic-Generierung verwenden kann.
+Ein MagicMirror²-Modul, das RSS-Newsfeeds als rotierenden Ticker anzeigt – oben und unten am Bildschirm. Durch Antippen einer Headline wird diese für **MMM-ComicButton** ausgewählt, der daraus per KI einen Comic generiert und auf Mastodon postet.
 
 ---
 
@@ -8,15 +8,17 @@ Ein MagicMirror²-Modul, das RSS-Newsfeeds als rotierenden Ticker anzeigt – ty
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  [TA]  Bundesrat beschliesst neue Energiemassnahmen – Details unklar  1/18│
+│  [TA]  Bundesrat beschliesst neue Energiemassnahmen       🎨  1/18  │
 └──────────────────────────────────────────────────────────────────────┘
 
      ... (MagicMirror-Inhalte) ...
 
 ┌──────────────────────────────────────────────────────────────────────┐
-│  [F1]  FIA findet Ersatz für Bahrain & Saudi-Arabien – in der F2    3/14│
+│  [F1]  FIA findet Ersatz für Bahrain & Saudi-Arabien      ✅  3/14  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+Angetippte Headline erscheint **gold** markiert mit ✅ – der Ticker pausiert 30 Sekunden damit die Auswahl sichtbar bleibt.
 
 ---
 
@@ -40,7 +42,7 @@ npm install
 
 ## Konfiguration
 
-Das Modul wird **zweimal** in der `config.js` eingetragen – einmal für den oberen, einmal für den unteren Ticker:
+Das Modul wird **zweimal** in der `config.js` eingetragen – oben und unten:
 
 ```javascript
 // ── Ticker OBEN: Schweizer Nachrichten ──
@@ -104,19 +106,19 @@ Das Modul wird **zweimal** in der `config.js` eingetragen – einmal für den ob
 |---|---|---|
 | `feeds` | `[]` | Liste der RSS-Quellen (Pflicht) |
 | `displayPosition` | `"top"` | `"top"` oder `"bottom"` – steuert CSS-Trennlinie |
-| `rotateInterval` | `8000` | Millisekunden zwischen Headline-Wechseln |
-| `updateInterval` | `600000` | Millisekunden zwischen RSS-Abrufen (10 Min.) |
+| `rotateInterval` | `8000` | ms zwischen Headline-Wechseln (pausiert 30s nach Auswahl) |
+| `updateInterval` | `600000` | ms zwischen RSS-Abrufen (Standard: 10 Min.) |
 | `maxItemsPerFeed` | `10` | Maximale Artikel pro Feed |
-| `animationSpeed` | `600` | Überblend-Dauer beim Wechsel in ms |
+| `animationSpeed` | `600` | Überblend-Dauer in ms |
 
 ### Feed-Objekt
 
 | Feld | Pflicht | Beschreibung |
 |---|---|---|
-| `name` | ✅ | Anzeigename – muss eindeutig sein (wird für Headline-Pool verwendet) |
+| `name` | ✅ | Anzeigename – muss über alle Feeds eindeutig sein |
 | `url` | ✅ | RSS/Atom-Feed-URL |
-| `category` | – | Farbschema des Text-Badges (Fallback wenn kein Logo): `news` / `juve` / `f1` / `sport` |
-| `logo` | – | URL zu einem Logo/Favicon – wird als `<img>` anstelle des Text-Badges angezeigt |
+| `category` | – | Badge-Farbe (Fallback wenn kein Logo): `news` / `juve` / `f1` / `sport` |
+| `logo` | – | Logo-URL – wird als `<img>` statt Text-Badge angezeigt |
 
 ### Kategoriefarben (Text-Badge Fallback)
 
@@ -131,7 +133,7 @@ Das Modul wird **zweimal** in der `config.js` eingetragen – einmal für den ob
 
 ## Logos
 
-Wenn `logo` gesetzt ist, wird ein `<img>`-Element anstelle des farbigen Text-Badges angezeigt. Favicons funktionieren zuverlässig. Für bessere Qualität ein lokales Bild verwenden:
+Favicons funktionieren zuverlässig. Für bessere Qualität lokale Bilder verwenden:
 
 ```bash
 mkdir ~/MagicMirror/modules/MMM-NewsComicFeed/logos
@@ -142,7 +144,16 @@ mkdir ~/MagicMirror/modules/MMM-NewsComicFeed/logos
 logo: "modules/MMM-NewsComicFeed/logos/tagi.png"
 ```
 
-Grösse wird via CSS gesteuert (Standard: Höhe 22px).
+---
+
+## Interaktion – Headline auswählen
+
+1. Ticker läuft automatisch (alle `rotateInterval` ms)
+2. Gewünschte Headline **antippen**
+3. Headline wird **gold** markiert, ✅ erscheint rechts
+4. Ticker pausiert **30 Sekunden** damit die Auswahl sichtbar bleibt
+5. Die andere Feed-Instanz verliert ihre Markierung automatisch
+6. **MMM-ComicButton** zeigt die gewählte Headline und wartet auf Tastendruck
 
 ---
 
@@ -150,31 +161,24 @@ Grösse wird via CSS gesteuert (Standard: Höhe 22px).
 
 ### Sendet
 
-Bei jedem Headline-Wechsel und beim initialen Laden:
-
 ```javascript
-sendNotification("NEWS_CURRENT_HEADLINE", {
+// Beim Antippen einer Headline:
+sendNotification("COMIC_HEADLINE_SELECTED", {
   source:   "TuttoJuve",
   category: "juve",
   title:    "Vlahovic verlängert bis 2028",
   link:     "https://...",
   pubDate:  "2025-04-07T10:30:00Z",
+  _feedId:  "MMM-NewsComicFeed_0", // intern, zur Markierungssteuerung
 });
 ```
 
 ### Empfängt
 
 ```javascript
-// Anfrage von MMM-ComicButton beim Start
-"REQUEST_CURRENT_HEADLINE"
-// → Antwortet sofort mit der aktuell angezeigten Headline
+// Von der anderen Feed-Instanz – damit Markierung zurückgesetzt wird:
+"COMIC_HEADLINE_SELECTED"  →  wenn _feedId !== eigene identifier
 ```
-
----
-
-## Zusammenspiel mit MMM-ComicButton
-
-MMM-ComicButton baut intern einen **Headline-Pool** auf – eine Headline pro Feed-Quelle. Bei jedem Tastendruck wird zufällig eine Headline aus dem Pool gewählt. Damit beide Feed-Instanzen (oben/unten) im Pool landen, müssen die `name`-Felder der Feeds **eindeutig** sein.
 
 ---
 
@@ -186,10 +190,13 @@ curl -A "MagicMirror" "https://www.tuttojuve.com/feed" | head -30
 ```
 
 **Formel1.de funktioniert nicht**
-→ Alternativ: `https://www.motorsport-total.com/rss/f1` oder `https://www.formel1.de/rss`
+→ Alternativ: `https://www.motorsport-total.com/rss/f1`
 
-**Nur Feeds aus einer Instanz erscheinen im ComicButton**
-→ Prüfen ob `name`-Felder aller Feeds eindeutig sind – doppelte Namen werden im Pool überschrieben.
+**Antippen funktioniert nicht**
+→ Prüfen ob Touchscreen-Events in Electron aktiv sind. Im `config.js` ggf. ergänzen:
+```javascript
+electronOptions: { webPreferences: { touchEvents: true } }
+```
 
 ---
 

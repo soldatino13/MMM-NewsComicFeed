@@ -11,9 +11,10 @@ Module.register("MMM-NewsComicFeed", {
   },
 
   start() {
-    this.headlines    = [];
-    this.currentIndex = 0;
-    this.loaded       = false;
+    this.headlines      = [];
+    this.currentIndex   = 0;
+    this.loaded         = false;
+    this.selectedTitle  = null; // merken welche gerade ausgewählt ist
 
     this._fetch();
     this._fetchTimer  = setInterval(() => this._fetch(), this.config.updateInterval);
@@ -25,10 +26,14 @@ Module.register("MMM-NewsComicFeed", {
     clearInterval(this._rotateTimer);
   },
 
-  // MMM-ComicButton fragt beim Start nach der aktuellen Headline
-  notificationReceived(notification) {
-    if (notification === "REQUEST_CURRENT_HEADLINE" && this.headlines.length) {
-      this.sendNotification("NEWS_CURRENT_HEADLINE", this.headlines[this.currentIndex]);
+  notificationReceived(notification, payload) {
+    // Wenn eine andere Headline ausgewählt wurde (z.B. vom anderen Feed),
+    // Markierung zurücksetzen falls sie nicht von uns kommt
+    if (notification === "COMIC_HEADLINE_SELECTED") {
+      if (payload._feedId !== this.identifier) {
+        this.selectedTitle = null;
+        this.updateDom(200);
+      }
     }
   },
 
@@ -43,7 +48,6 @@ Module.register("MMM-NewsComicFeed", {
   _rotate() {
     if (!this.headlines.length) return;
     this.currentIndex = (this.currentIndex + 1) % this.headlines.length;
-    this.sendNotification("NEWS_CURRENT_HEADLINE", this.headlines[this.currentIndex]);
     this.updateDom(this.config.animationSpeed);
   },
 
@@ -52,11 +56,22 @@ Module.register("MMM-NewsComicFeed", {
       this.headlines    = payload;
       this.currentIndex = 0;
       this.loaded       = true;
-      if (this.headlines.length) {
-        this.sendNotification("NEWS_CURRENT_HEADLINE", this.headlines[0]);
-      }
       this.updateDom(this.config.animationSpeed);
     }
+  },
+
+  _onHeadlineClick(item) {
+    this.selectedTitle = item.title;
+    // Rotation pausieren für 30s damit die gewählte Headline sichtbar bleibt
+    clearInterval(this._rotateTimer);
+    this._rotateTimer = setInterval(() => this._rotate(), 30 * 1000);
+    this.updateDom(150);
+
+    // Anderen Feed-Instanzen bescheid geben (damit sie Markierung zurücksetzen)
+    this.sendNotification("COMIC_HEADLINE_SELECTED", {
+      ...item,
+      _feedId: this.identifier,
+    });
   },
 
   getDom() {
@@ -67,23 +82,32 @@ Module.register("MMM-NewsComicFeed", {
       w.innerHTML = `<span class="news-loading">⌛ Lade News…</span>`;
       return w;
     }
-
     if (!this.headlines.length) {
       w.innerHTML = `<span class="news-loading">Keine Meldungen</span>`;
       return w;
     }
 
-    const item = this.headlines[this.currentIndex];
-    const feed = this.config.feeds.find(f => f.name === item.source);
+    const item     = this.headlines[this.currentIndex];
+    const selected = this.selectedTitle === item.title;
+    const feed     = this.config.feeds.find(f => f.name === item.source);
+
     const logoEl = feed?.logo
       ? `<img class="news-source-logo" src="${feed.logo}" alt="${item.source}" title="${item.source}">`
       : `<span class="news-source-tag news-cat-${(item.category || "news").toLowerCase()}">${item.source}</span>`;
 
     w.innerHTML = `
       ${logoEl}
-      <span class="news-headline-text">${item.title}</span>
+      <span class="news-headline-text ${selected ? "news-headline-selected" : ""}">${item.title}</span>
+      <span class="news-tap-hint ${selected ? "news-tap-selected" : ""}">
+        ${selected ? "✅" : "🎨"}
+      </span>
       <span class="news-counter">${this.currentIndex + 1}/${this.headlines.length}</span>
     `;
+
+    // Klick-Handler auf den Text
+    const textEl = w.querySelector(".news-headline-text");
+    textEl.addEventListener("click", () => this._onHeadlineClick(item));
+    textEl.style.cursor = "pointer";
 
     return w;
   },

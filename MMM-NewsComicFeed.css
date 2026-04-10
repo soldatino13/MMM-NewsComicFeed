@@ -7,7 +7,7 @@
   width: 100%;
   overflow: hidden;
   font-family: "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
-  font-size: 30px;
+  font-size: 15px;
   padding: 6px 10px;
   background: rgba(0, 0, 0, 0.55);
   color: #eee;
@@ -20,7 +20,7 @@
 /* Source badge */
 .news-source-tag {
   flex-shrink: 0;
-  font-size: 30px;
+  font-size: 9px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -42,7 +42,7 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  font-size: 30px;
+  font-size: 15px;
   line-height: 1.3;
 }
 
@@ -69,4 +69,28 @@
   border-radius: 3px;
   background: rgba(255,255,255,0.08);
   padding: 2px 4px;
+}
+
+/* ── Klickbare Headline ──────────────────────────────────── */
+.news-headline-text {
+  transition: color 0.2s;
+}
+
+.news-headline-text:hover {
+  color: #fff;
+}
+
+.news-headline-selected {
+  color: #f0c040 !important;
+}
+
+.news-tap-hint {
+  flex-shrink: 0;
+  font-size: 13px;
+  opacity: 0.25;
+  transition: opacity 0.2s;
+}
+
+.news-tap-selected {
+  opacity: 1 !important;
 }
