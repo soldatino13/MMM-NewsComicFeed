@@ -1,21 +1,21 @@
 # MMM-NewsComicFeed
 
-Ein MagicMirror²-Modul, das RSS-Newsfeeds als rotierenden Ticker anzeigt – oben und unten am Bildschirm. Jede angezeigte Headline wird per `sendNotification` an andere Module weitergegeben, damit **MMM-ComicButton** immer die aktuell sichtbare Meldung für die Comic-Generierung verwenden kann.
+Ein MagicMirror²-Modul, das RSS-Newsfeeds als rotierenden Ticker anzeigt – typischerweise oben und unten am Bildschirm. Jede angezeigte Headline wird per `sendNotification` an andere Module weitergegeben, damit **MMM-ComicButton** immer die aktuell sichtbare Meldung für die Comic-Generierung verwenden kann.
 
 ---
 
 ## Vorschau
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  [TAGESANZEIGER]  Bundesrat beschliesst neue Energiemassnahmen  1/8│
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  [TA]  Bundesrat beschliesst neue Energiemassnahmen – Details unklar  1/18│
+└──────────────────────────────────────────────────────────────────────┘
 
      ... (MagicMirror-Inhalte) ...
 
-┌──────────────────────────────────────────────────────────────────┐
-│  [TUTTOJUVE]  Vlahovic verlängert bis 2028 – offiziell        3/12│
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  [F1]  FIA findet Ersatz für Bahrain & Saudi-Arabien – in der F2    3/14│
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -49,19 +49,21 @@ Das Modul wird **zweimal** in der `config.js` eingetragen – einmal für den ob
   position: "top_bar",
   config: {
     displayPosition: "top",
-    rotateInterval:  8000,      // Headline alle 8s wechseln
-    updateInterval:  600000,    // RSS alle 10 Min. neu laden
+    rotateInterval:  8000,
+    updateInterval:  600000,
     maxItemsPerFeed: 10,
     feeds: [
       {
         name:     "Tagesanzeiger",
         url:      "https://www.tagesanzeiger.ch/rss",
         category: "news",
+        logo:     "https://www.tagesanzeiger.ch/favicon.ico",
       },
       {
         name:     "20min",
         url:      "https://www.20min.ch/rss/rss.tmpl",
         category: "news",
+        logo:     "https://www.20min.ch/favicon.ico",
       },
     ],
   },
@@ -81,23 +83,27 @@ Das Modul wird **zweimal** in der `config.js` eingetragen – einmal für den ob
         name:     "TuttoJuve",
         url:      "https://www.tuttojuve.com/feed",
         category: "juve",
+        logo:     "https://www.tuttojuve.com/favicon.ico",
       },
       {
         name:     "Formel1.de",
         url:      "https://www.formel1.de/rss/news",
         category: "f1",
+        logo:     "https://www.formel1.de/favicon.ico",
       },
     ],
   },
 },
 ```
 
-### Alle Optionen
+---
+
+## Alle Optionen
 
 | Option | Standard | Beschreibung |
 |---|---|---|
-| `feeds` | `[]` | Liste der RSS-Quellen (Pflicht, siehe unten) |
-| `displayPosition` | `"top"` | `"top"` oder `"bottom"` – beeinflusst CSS-Trennlinie |
+| `feeds` | `[]` | Liste der RSS-Quellen (Pflicht) |
+| `displayPosition` | `"top"` | `"top"` oder `"bottom"` – steuert CSS-Trennlinie |
 | `rotateInterval` | `8000` | Millisekunden zwischen Headline-Wechseln |
 | `updateInterval` | `600000` | Millisekunden zwischen RSS-Abrufen (10 Min.) |
 | `maxItemsPerFeed` | `10` | Maximale Artikel pro Feed |
@@ -105,15 +111,14 @@ Das Modul wird **zweimal** in der `config.js` eingetragen – einmal für den ob
 
 ### Feed-Objekt
 
-```javascript
-{
-  name:     "Anzeigename",   // erscheint als Badge im Ticker
-  url:      "https://...",   // RSS/Atom-Feed-URL
-  category: "news",          // Farbschema: "news" | "juve" | "f1" | "sport"
-}
-```
+| Feld | Pflicht | Beschreibung |
+|---|---|---|
+| `name` | ✅ | Anzeigename – muss eindeutig sein (wird für Headline-Pool verwendet) |
+| `url` | ✅ | RSS/Atom-Feed-URL |
+| `category` | – | Farbschema des Text-Badges (Fallback wenn kein Logo): `news` / `juve` / `f1` / `sport` |
+| `logo` | – | URL zu einem Logo/Favicon – wird als `<img>` anstelle des Text-Badges angezeigt |
 
-### Kategoriefarben
+### Kategoriefarben (Text-Badge Fallback)
 
 | `category` | Farbe |
 |---|---|
@@ -124,12 +129,31 @@ Das Modul wird **zweimal** in der `config.js` eingetragen – einmal für den ob
 
 ---
 
-## Notification-Schnittstelle
+## Logos
 
-Das Modul sendet bei jedem Headline-Wechsel:
+Wenn `logo` gesetzt ist, wird ein `<img>`-Element anstelle des farbigen Text-Badges angezeigt. Favicons funktionieren zuverlässig. Für bessere Qualität ein lokales Bild verwenden:
+
+```bash
+mkdir ~/MagicMirror/modules/MMM-NewsComicFeed/logos
+# Logo-Datei dort ablegen
+```
 
 ```javascript
-this.sendNotification("NEWS_CURRENT_HEADLINE", {
+logo: "modules/MMM-NewsComicFeed/logos/tagi.png"
+```
+
+Grösse wird via CSS gesteuert (Standard: Höhe 22px).
+
+---
+
+## Notification-Schnittstelle
+
+### Sendet
+
+Bei jedem Headline-Wechsel und beim initialen Laden:
+
+```javascript
+sendNotification("NEWS_CURRENT_HEADLINE", {
   source:   "TuttoJuve",
   category: "juve",
   title:    "Vlahovic verlängert bis 2028",
@@ -138,33 +162,34 @@ this.sendNotification("NEWS_CURRENT_HEADLINE", {
 });
 ```
 
-**MMM-ComicButton** lauscht auf diese Notification und verwendet die aktuell angezeigte Headline beim nächsten Tastendruck.
+### Empfängt
+
+```javascript
+// Anfrage von MMM-ComicButton beim Start
+"REQUEST_CURRENT_HEADLINE"
+// → Antwortet sofort mit der aktuell angezeigten Headline
+```
 
 ---
 
-## RSS-URLs prüfen
+## Zusammenspiel mit MMM-ComicButton
 
-Falls ein Feed nicht lädt, URL direkt testen:
-
-```bash
-curl -s "https://www.tuttojuve.com/feed" | head -50
-curl -s "https://www.formel1.de/rss/news" | head -50
-```
-
-Manche Feeds erfordern einen `User-Agent` – das Modul sendet bereits `MagicMirror/MMM-NewsComicFeed`.
+MMM-ComicButton baut intern einen **Headline-Pool** auf – eine Headline pro Feed-Quelle. Bei jedem Tastendruck wird zufällig eine Headline aus dem Pool gewählt. Damit beide Feed-Instanzen (oben/unten) im Pool landen, müssen die `name`-Felder der Feeds **eindeutig** sein.
 
 ---
 
 ## Fehlerbehebung
 
 **Feed lädt nicht**
-→ URL in der Konsole testen (siehe oben). Einige Newsseiten blockieren RSS-Anfragen aus dem Ausland oder ohne Browser-User-Agent.
+```bash
+curl -A "MagicMirror" "https://www.tuttojuve.com/feed" | head -30
+```
 
-**Formel1.de URL funktioniert nicht**
-→ Alternativ versuchen: `https://www.formel1.de/rss` oder einen anderen F1-Feed wie `https://www.motorsport-total.com/rss/f1`.
+**Formel1.de funktioniert nicht**
+→ Alternativ: `https://www.motorsport-total.com/rss/f1` oder `https://www.formel1.de/rss`
 
-**Beide Ticker zeigen dieselben Nachrichten**
-→ Prüfen, ob `feeds` in beiden Modul-Instanzen unterschiedlich konfiguriert sind.
+**Nur Feeds aus einer Instanz erscheinen im ComicButton**
+→ Prüfen ob `name`-Felder aller Feeds eindeutig sind – doppelte Namen werden im Pool überschrieben.
 
 ---
 
