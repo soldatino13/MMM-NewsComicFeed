@@ -1,22 +1,11 @@
 "use strict";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MMM-NewsComicFeed
-//
-// Rotating RSS news ticker. Two instances cover top & bottom strips.
-// Broadcasts NEWS_CURRENT_HEADLINE so MMM-ComicButton always has the latest.
-//
-// Config example (see README):
-//   displayPosition: "top"   → Tagesanzeiger + 20min
-//   displayPosition: "bottom" → TuttoJuve + Formel1.de
-// ─────────────────────────────────────────────────────────────────────────────
-
 Module.register("MMM-NewsComicFeed", {
   defaults: {
-    feeds: [],                     // set per instance in config.js
-    displayPosition: "top",        // "top" | "bottom"  (cosmetic only)
-    updateInterval:  10 * 60 * 1000, // re-fetch every 10 min
-    rotateInterval:  8 * 1000,       // switch headline every 8s
+    feeds: [],
+    displayPosition: "top",
+    updateInterval:  10 * 60 * 1000,
+    rotateInterval:  8 * 1000,
     maxItemsPerFeed: 10,
     animationSpeed:  600,
   },
@@ -36,10 +25,17 @@ Module.register("MMM-NewsComicFeed", {
     clearInterval(this._rotateTimer);
   },
 
+  // MMM-ComicButton fragt beim Start nach der aktuellen Headline
+  notificationReceived(notification) {
+    if (notification === "REQUEST_CURRENT_HEADLINE" && this.headlines.length) {
+      this.sendNotification("NEWS_CURRENT_HEADLINE", this.headlines[this.currentIndex]);
+    }
+  },
+
   _fetch() {
     this.sendSocketNotification("NEWS_FETCH", {
-      identifier:    this.identifier,
-      feeds:         this.config.feeds,
+      identifier:      this.identifier,
+      feeds:           this.config.feeds,
       maxItemsPerFeed: this.config.maxItemsPerFeed,
     });
   },
@@ -47,7 +43,6 @@ Module.register("MMM-NewsComicFeed", {
   _rotate() {
     if (!this.headlines.length) return;
     this.currentIndex = (this.currentIndex + 1) % this.headlines.length;
-    // Broadcast latest headline to all modules (picked up by MMM-ComicButton)
     this.sendNotification("NEWS_CURRENT_HEADLINE", this.headlines[this.currentIndex]);
     this.updateDom(this.config.animationSpeed);
   },
@@ -79,10 +74,13 @@ Module.register("MMM-NewsComicFeed", {
     }
 
     const item = this.headlines[this.currentIndex];
-    const catClass = `news-cat-${(item.category || "news").toLowerCase()}`;
+    const feed = this.config.feeds.find(f => f.name === item.source);
+    const logoEl = feed?.logo
+      ? `<img class="news-source-logo" src="${feed.logo}" alt="${item.source}" title="${item.source}">`
+      : `<span class="news-source-tag news-cat-${(item.category || "news").toLowerCase()}">${item.source}</span>`;
 
     w.innerHTML = `
-      <span class="news-source-tag ${catClass}">${item.source}</span>
+      ${logoEl}
       <span class="news-headline-text">${item.title}</span>
       <span class="news-counter">${this.currentIndex + 1}/${this.headlines.length}</span>
     `;

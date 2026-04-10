@@ -20,7 +20,7 @@
 /* Source badge */
 .news-source-tag {
   flex-shrink: 0;
-  font-size: 25px;
+  font-size: 30px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -49,12 +49,24 @@
 /* Counter */
 .news-counter {
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 9px;
   color: #444;
   letter-spacing: 0.5px;
 }
 
 .news-loading {
-  font-size: 15px;
+  font-size: 11px;
   color: #555;
+}
+
+/* ── Source Logo (Bild statt Text-Badge) ─────────────────── */
+.news-source-logo {
+  flex-shrink: 0;
+  width: auto;
+  height: 22px;
+  max-width: 80px;
+  object-fit: contain;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.08);
+  padding: 2px 4px;
 }
